@@ -32,10 +32,7 @@ jobs:
         for patch in ../incus/patches/ui-canonical-*.patch; do
           git apply --reject --whitespace=fix $patch
         done
-        
-    - name: Rename Files
-      run: |
-        sed -i -f "${PWD}/incus/patches/ui-canonical-renames.sed" lxd-ui/src/*/*.ts* lxd-ui/src/*/*/*/*.ts* lxd-ui/src/*/*/*/*/*.ts* lxd-ui/src/*/*/*/*/*/*.ts*
+        sed -i -f "../incus/patches/ui-canonical-renames.sed" src/*/*.ts* src/*/*/*.ts* src/*/*/*/*.ts* src/*/*/*/*/*.ts*
         
     - name: Install and Build LXD-UI
       run: |
