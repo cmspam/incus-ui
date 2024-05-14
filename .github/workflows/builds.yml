@@ -40,14 +40,25 @@ jobs:
         npm install -g yarn
         yarn install
         yarn build
-        
+
     - name: Package Build
       run: |
         cd lxd-ui/build/ui
-        tar -czvf lxd-ui.tar.gz *
+        version=$(date +%Y%m%d)
+        tar -czvf lxd-ui-$version.tar.gz *
+        
+    - name: Create Release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        version=$(date +%Y%m%d)
+        release_name="incus-ui-$version"
+        asset_name="lxd-ui-$version.tar.gz"
+        
+        gh release create $release_name lxd-ui/build/ui/$asset_name
         
     - name: Upload Artifact
       uses: actions/upload-artifact@v3
       with:
         name: lxd-ui
-        path: lxd-ui/build/ui/lxd-ui.tar.gz
+        path: lxd-ui/build/ui/lxd-ui-*.tar.gz
