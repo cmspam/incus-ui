@@ -44,34 +44,31 @@ jobs:
     - name: Package Build
       run: |
         cd lxd-ui/build/ui
-        version=$(date +%Y%m%d)
-        tar -czvf incus-ui-$version.tar.gz *
+        tar -czvf incus-ui.tar.gz *
         
-
-    - name: Create Release
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        version=$(date +%Y%m%d)
-        release_name="incus-ui-$version"
-        asset_name="incus-ui-$version.tar.gz"
-        asset_path="lxd-ui/build/ui/$asset_name"
-        
-        release_data=$(curl -X POST -H "Authorization: token $GITHUB_TOKEN" \
-                             -H "Accept: application/vnd.github.v3+json" \
-                             https://api.github.com/repos/cmspam/incus-ui/releases \
-                             -d "{\"tag_name\": \"$release_name\", \"name\": \"$release_name\"}")
-        
-        upload_url=$(echo "$release_data" | jq -r '.upload_url')
-        
-        curl -X POST -H "Authorization: token $GITHUB_TOKEN" \
-                      -H "Content-Type: application/zip" \
-                      --data-binary "@$asset_path" \
-                      "$upload_url?name=$asset_name"
-
-                      
     - name: Upload Artifact
       uses: actions/upload-artifact@v3
       with:
         name: incus-ui
-        path: lxd-ui/build/ui/incus-ui-*.tar.gz
+        path: lxd-ui/build/ui/incus-ui.tar.gz
+
+  release:
+      needs: [build]
+      permissions: write-all
+      runs-on: ubuntu-latest
+
+      steps:
+        - uses: actions/download-artifact@v1
+          with:
+            name: incus-ui.tar.gz
+
+        - name: release
+          uses: marvinpinto/action-automatic-releases@latest
+          with:
+            title: Latest git build
+            automatic_release_tag: latest
+            prerelease: true
+            draft: false
+            files: |
+              incus-ui.tar.gz
+            repo_token: ${{ secrets.GITHUB_TOKEN }}
