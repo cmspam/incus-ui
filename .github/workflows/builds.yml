@@ -1,0 +1,56 @@
+name: Build LXD-UI with Incus Patches
+
+on:
+  workflow_dispatch:
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y git nodejs npm
+        
+    - name: Checkout LXD-UI
+      uses: actions/checkout@v3
+      with:
+        repository: canonical/lxd-ui
+        path: lxd-ui
+        
+    - name: Checkout Incus
+      uses: actions/checkout@v3
+      with:
+        repository: zabbly/incus
+        path: incus
+        
+    - name: Apply Incus Patches
+      run: |
+        cd incus/patches
+        for patch in ui-canonical-*; do
+          git apply --directory="../../lxd-ui" $patch
+        done
+        
+    - name: Rename Files
+      run: |
+        sed -i -f "${PWD}/incus/patches/ui-canonical-renames.sed" lxd-ui/src/*/*.ts* lxd-ui/src/*/*/*/*.ts* lxd-ui/src/*/*/*/*/*.ts* lxd-ui/src/*/*/*/*/*/*.ts*
+        
+    - name: Install and Build LXD-UI
+      run: |
+        cd lxd-ui
+        npm install -g yarn
+        yarn install
+        yarn build
+        
+    - name: Package Build
+      run: |
+        cd lxd-ui/build/ui
+        tar -czvf lxd-ui.tar.gz *
+        
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: lxd-ui
+        path: lxd-ui/build/ui/lxd-ui.tar.gz
