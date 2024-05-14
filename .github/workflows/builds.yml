@@ -29,7 +29,9 @@ jobs:
     - name: Apply Incus Patches
       run: |
         cd lxd-ui
-        git am --ignore-whitespace --3way ../incus/patches/ui-canonical-*.patch || git am --abort
+        for patch in ../incus/patches/ui-canonical-*.patch; do
+          git apply --reject --whitespace=fix $patch
+        done
         
     - name: Rename Files
       run: |
