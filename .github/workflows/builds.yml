@@ -45,20 +45,33 @@ jobs:
       run: |
         cd lxd-ui/build/ui
         version=$(date +%Y%m%d)
-        tar -czvf lxd-ui-$version.tar.gz *
+        tar -czvf incus-ui-$version.tar.gz *
         
+
     - name: Create Release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         version=$(date +%Y%m%d)
         release_name="incus-ui-$version"
-        asset_name="lxd-ui-$version.tar.gz"
+        asset_name="incus-ui-$version.tar.gz"
+        asset_path="lxd-ui/build/ui/$asset_name"
         
-        gh release create $release_name lxd-ui/build/ui/$asset_name
+        release_data=$(curl -X POST -H "Authorization: token $GITHUB_TOKEN" \
+                             -H "Accept: application/vnd.github.v3+json" \
+                             https://api.github.com/repos/cmspam/incus-ui/releases \
+                             -d "{\"tag_name\": \"$release_name\", \"name\": \"$release_name\"}")
         
+        upload_url=$(echo "$release_data" | jq -r '.upload_url')
+        
+        curl -X POST -H "Authorization: token $GITHUB_TOKEN" \
+                      -H "Content-Type: application/zip" \
+                      --data-binary "@$asset_path" \
+                      "$upload_url?name=$asset_name"
+
+                      
     - name: Upload Artifact
       uses: actions/upload-artifact@v3
       with:
-        name: lxd-ui
-        path: lxd-ui/build/ui/lxd-ui-*.tar.gz
+        name: incus-ui
+        path: lxd-ui/build/ui/incus-ui-*.tar.gz
