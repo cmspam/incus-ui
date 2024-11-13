@@ -10,8 +10,8 @@ jobs:
     steps:
       - name: Add Zabbly repository key
         run: |
-          sudo install -m 0755 -d /etc/apt/keyrings
-          curl -fsSL https://pkgs.zabbly.com/key.asc | sudo gpg --dearmor -o /etc/apt/keyrings/zabbly.asc
+          sudo mkdir -p /etc/apt/keyrings/
+          sudo curl -fsSL https://pkgs.zabbly.com/key.asc -o /etc/apt/keyrings/zabbly.asc
 
       - name: Add Zabbly repository
         run: |
