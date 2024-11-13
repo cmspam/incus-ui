@@ -1,74 +1,81 @@
-name: Build LXD-UI with Incus Patches
-
+name: Package Incus UI
 on:
-  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'  # Runs daily at midnight UTC
+  workflow_dispatch:  # Allows manual triggering
 
 jobs:
-
   build:
     runs-on: ubuntu-latest
-    
     steps:
-    - name: Install Dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y git nodejs npm
-        
-    - name: Checkout LXD-UI
-      uses: actions/checkout@v3
-      with:
-        repository: canonical/lxd-ui
-        path: lxd-ui
-        
-    - name: Checkout Incus
-      uses: actions/checkout@v3
-      with:
-        repository: zabbly/incus
-        path: incus
-        
-    - name: Apply Incus Patches
-      run: |
-        cd lxd-ui
-        for patch in ../incus/patches/ui-canonical-*.patch; do
-          git apply --reject --whitespace=fix $patch
-        done
-        sed -i -f "../incus/patches/ui-canonical-renames.sed" src/*/*.ts* src/*/*/*.ts* src/*/*/*/*.ts* src/*/*/*/*/*.ts*
-        
-    - name: Install and Build LXD-UI
-      run: |
-        cd lxd-ui
-        npm install -g yarn
-        yarn install
-        yarn build
+      - name: Add Zabbly repository key
+        run: |
+          sudo mkdir -p /etc/apt/keyrings/
+          sudo curl -fsSL https://pkgs.zabbly.com/key.asc -o /etc/apt/keyrings/zabbly.asc
 
-    - name: Package Build
-      run: |
-        cd lxd-ui/build/ui
-        tar -czvf incus-ui.tar.gz *
-        
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: incus-ui.tar.gz
-        path: lxd-ui/build/ui/incus-ui.tar.gz
+      - name: Add Zabbly repository
+        run: |
+          sudo sh -c 'cat <<EOF > /etc/apt/sources.list.d/zabbly-incus-stable.sources
+          Enabled: yes
+          Types: deb
+          URIs: https://pkgs.zabbly.com/incus/stable
+          Suites: $(. /etc/os-release && echo ${VERSION_CODENAME})
+          Components: main
+          Architectures: $(dpkg --print-architecture)
+          Signed-By: /etc/apt/keyrings/zabbly.asc
+          EOF'
+
+      - name: Update apt and download package
+        run: |
+          sudo apt-get update
+          # Create a temporary directory for our work
+          mkdir -p /tmp/incus-work
+          cd /tmp/incus-work
+          # Download the package without installing it
+          apt-get download incus-ui-canonical
+
+      - name: Extract package and create tarball
+        run: |
+          cd /tmp/incus-work
+          # Extract the .deb file
+          dpkg-deb -x *.deb ./extracted
+          # Create tarball of the /opt/incus/ui directory if it exists
+          if [ -d "./extracted/opt/incus/ui" ]; then
+            cd ./extracted/opt/incus
+            tar czf /tmp/incus-work/incus-ui.tar.gz ui/
+          else
+            echo "Error: /opt/incus/ui directory not found in package"
+            exit 1
+          fi
+
+      - name: Get package version
+        id: get-version
+        run: |
+          cd /tmp/incus-work
+          VERSION=$(dpkg-deb -f *.deb Version | tr ':' '-')
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: incus-ui.tar.gz
+          path: /tmp/incus-work/incus-ui.tar.gz
 
   release:
-      needs: [build]
-      permissions: write-all
-      runs-on: ubuntu-latest
+    needs: [build]
+    permissions: write-all
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: incus-ui.tar.gz
 
-      steps:
-        - uses: actions/download-artifact@v1
-          with:
-            name: incus-ui.tar.gz
-
-        - name: release
-          uses: marvinpinto/action-automatic-releases@latest
-          with:
-            title: Latest git build
-            automatic_release_tag: latest
-            prerelease: true
-            draft: false
-            files: |
-              incus-ui.tar.gz
-            repo_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: release
+        uses: marvinpinto/action-automatic-releases@latest
+        with:
+          title: Latest git build
+          automatic_release_tag: latest
+          prerelease: true
+          draft: false
+          files: incus-ui.tar.gz
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
