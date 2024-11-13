@@ -6,6 +6,13 @@ on:
 
 jobs:
   build:
+    strategy:
+      matrix:
+        include:
+          - repo: "https://pkgs.zabbly.com/incus/stable"
+            artifact: "incus-ui-stable.tar.gz"
+          - repo: "https://pkgs.zabbly.com/incus/lts-6.0"
+            artifact: "incus-ui-lts.tar.gz"
     runs-on: ubuntu-latest
     steps:
       - name: Add Zabbly repository key
@@ -18,7 +25,7 @@ jobs:
           sudo sh -c 'cat <<EOF > /etc/apt/sources.list.d/zabbly-incus-stable.sources
           Enabled: yes
           Types: deb
-          URIs: https://pkgs.zabbly.com/incus/stable
+          URIs: ${{ matrix.repo }}
           Suites: $(. /etc/os-release && echo ${VERSION_CODENAME})
           Components: main
           Architectures: $(dpkg --print-architecture)
@@ -42,7 +49,7 @@ jobs:
           # Create tarball of the /opt/incus/ui directory if it exists
           if [ -d "./extracted/opt/incus/ui" ]; then
             cd ./extracted/opt/incus
-            tar czf /tmp/incus-work/incus-ui.tar.gz ui/
+            tar czf /tmp/incus-work/${{ matrix.artifact }} ui/
           else
             echo "Error: /opt/incus/ui directory not found in package"
             exit 1
@@ -58,8 +65,8 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
-          name: incus-ui.tar.gz
-          path: /tmp/incus-work/incus-ui.tar.gz
+          name: ${{ matrix.artifact }}
+          path: /tmp/incus-work/${{ matrix.artifact }}
 
   release:
     needs: [build]
@@ -68,7 +75,11 @@ jobs:
     steps:
       - uses: actions/download-artifact@v3
         with:
-          name: incus-ui.tar.gz
+          name: incus-ui-stable.tar.gz
+      
+      - uses: actions/download-artifact@v3
+        with:
+          name: incus-ui-lts.tar.gz
 
       - name: release
         uses: marvinpinto/action-automatic-releases@latest
@@ -77,5 +88,7 @@ jobs:
           automatic_release_tag: latest
           prerelease: true
           draft: false
-          files: incus-ui.tar.gz
+          files: |
+            incus-ui-stable.tar.gz
+            incus-ui-lts.tar.gz
           repo_token: ${{ secrets.GITHUB_TOKEN }}
