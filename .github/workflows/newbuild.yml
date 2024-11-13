@@ -1,0 +1,62 @@
+name: Package Incus UI
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Runs daily at midnight UTC
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  package-incus-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add Zabbly repository key
+        run: |
+          sudo install -m 0755 -d /etc/apt/keyrings
+          curl -fsSL https://pkgs.zabbly.com/key.asc | sudo gpg --dearmor -o /etc/apt/keyrings/zabbly.asc
+
+      - name: Add Zabbly repository
+        run: |
+          sh -c 'cat <<EOF > /etc/apt/sources.list.d/zabbly-incus-stable.sources
+          Enabled: yes
+          Types: deb
+          URIs: https://pkgs.zabbly.com/incus/stable
+          Suites: $(. /etc/os-release && echo ${VERSION_CODENAME})
+          Components: main
+          Architectures: $(dpkg --print-architecture)
+          Signed-By: /etc/apt/keyrings/zabbly.asc
+          EOF'
+
+      - name: Update apt and download package
+        run: |
+          sudo apt-get update
+          # Create a temporary directory for our work
+          mkdir -p /tmp/incus-work
+          cd /tmp/incus-work
+          # Download the package without installing it
+          apt-get download incus-ui-canonical
+
+      - name: Extract package and create tarball
+        run: |
+          cd /tmp/incus-work
+          # Extract the .deb file
+          dpkg-deb -x *.deb ./extracted
+          # Create tarball of the /opt/incus directory if it exists
+          if [ -d "./extracted/opt/incus" ]; then
+            cd ./extracted/opt
+            tar czf /tmp/incus-work/incus-ui.tar.gz incus/
+          else
+            echo "Error: /opt/incus directory not found in package"
+            exit 1
+          fi
+
+      - name: Get package version
+        id: get-version
+        run: |
+          cd /tmp/incus-work
+          VERSION=$(dpkg-deb -f *.deb Version)
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: incus-ui-${{ steps.get-version.outputs.version }}
+          path: /tmp/incus-work/incus-ui.tar.gz
