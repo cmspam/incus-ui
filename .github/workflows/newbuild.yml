@@ -52,7 +52,7 @@ jobs:
         id: get-version
         run: |
           cd /tmp/incus-work
-          VERSION=$(dpkg-deb -f *.deb Version)
+          VERSION=$(dpkg-deb -f *.deb Version | tr ':' '-')
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Upload artifact
