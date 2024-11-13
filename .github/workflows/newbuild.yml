@@ -15,7 +15,7 @@ jobs:
 
       - name: Add Zabbly repository
         run: |
-          sh -c 'cat <<EOF > /etc/apt/sources.list.d/zabbly-incus-stable.sources
+          sudo sh -c 'cat <<EOF > /etc/apt/sources.list.d/zabbly-incus-stable.sources
           Enabled: yes
           Types: deb
           URIs: https://pkgs.zabbly.com/incus/stable
