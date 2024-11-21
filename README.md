@@ -1,5 +1,5 @@
 # incus-ui
-Repackaged incus-ui based on incus-ui-canonical deb packages from [Zabbly](https://github.com/zabbly/incus).
+Automatic daily repackaged incus-ui based on incus-ui-canonical deb packages from [Zabbly](https://github.com/zabbly/incus).
 
 These are tarballs of pre-built /opt/incus/ui folder from his deb packages, and ready to drop into /opt/incus/ or wherever you like:
 
