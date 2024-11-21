@@ -1,6 +1,7 @@
 # incus-ui
-These are tarballs of incus-ui-canonical from Zabbly, of the /opt/incus/ui folder.
-These are pre-built, and ready to drop into /opt/incus/ or wherever you like:
+These are tarballs of incus-ui-canonical from Zabbly.
+
+These are tarballs of pre-built /opt/incus/ui folder from his deb packages, and ready to drop into /opt/incus/ or wherever you like:
 
 ```
 tar xvf incus-ui-stable.tar.gz -C /opt/incus/
